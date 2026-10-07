@@ -1,0 +1,30 @@
+{
+  "name": "supportbank",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/marianatoea21/SupportBank#readme",
+  "bugs": {
+    "url": "https://github.com/marianatoea21/SupportBank/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/marianatoea21/SupportBank.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "tsc && node ./dist/index.js"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "@types/readline-sync": "^1.4.8",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "date-fns": "^4.4.0",
+    "readline-sync": "^1.4.10"
+  }
+}
