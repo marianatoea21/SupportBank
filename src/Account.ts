@@ -1,19 +1,23 @@
-import { Transaction} from './Transaction';
+import { Transaction } from './Transaction';
 
 export class Account {
-    public transactions: Transaction[] = [];
+    name: string = '';
+    transactions: Transaction[] = [];
 
-    constructor(public name: string) {}
+    constructor(name: string) {
+        this.name = name;
+    } 
 
     public getBalance(): number {
-        return this.transactions.reduce((balance, transaction) => {
-            if (transaction.to === this.name) {
-                return balance + transaction.amount;
-            } else if (transaction.from === this.name) {
-                return balance - transaction.amount;
-            }
+        let balance = 0;
 
-            return balance;
-        }, 0);
+        for (const transaction of this.transactions) {
+            if (transaction.from === this.name) {
+                balance -= transaction.amount;
+            } else if (transaction.to === this.name) {
+                balance += transaction.amount;
+            }
+        }
+        return balance;
     }
 }

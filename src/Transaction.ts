@@ -1,9 +1,21 @@
 export class Transaction {
+    date: Date;
+    from: string;
+    to: string;
+    narrative: string;
+    amount: number;
+
     constructor(
-        public date: Date, 
-        public from: string,
-        public to: string,
-        public narrative: string,
-        public amount: number
-    ) {}
+        date: Date, 
+        from: string,
+        to: string,
+        narrative: string,
+        amount: number
+    ) {
+        this.date = date;
+        this.from = from;
+        this.to = to;
+        this.narrative = narrative;
+        this.amount = amount;
+    }
 }
