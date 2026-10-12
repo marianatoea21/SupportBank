@@ -2,13 +2,14 @@ import './logConfig';
 import log4js from 'log4js';
 import readlineSync from 'readline-sync';
 import { Bank } from './Bank';
+import { DATA_FILES } from './config';
 
 const logger = log4js.getLogger('index');
 logger.info('SupportBank started');
 
 const bank = new Bank();
 
-for (const file of ['resources/Transactions2014.csv', 'resources/DodgyTransactions2015.csv']) {
+for (const file of DATA_FILES) {
     const errors = bank.loadFromCSV(file);
     if (errors.length > 0) {
         console.log(`"${file}" contains errors, so none of its transactions were imported:`);
