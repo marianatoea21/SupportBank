@@ -1,8 +1,21 @@
+import './logConfig';
+import log4js from 'log4js';
 import readlineSync from 'readline-sync';
 import { Bank } from './Bank';
 
+const logger = log4js.getLogger('index');
+logger.info('SupportBank started');
+
 const bank = new Bank();
-bank.loadFromCSV('resources/Transactions2014.csv');
+
+for (const file of ['resources/Transactions2014.csv', 'resources/DodgyTransactions2015.csv']) {
+    const errors = bank.loadFromCSV(file);
+    if (errors.length > 0) {
+        console.log(`"${file}" contains errors, so none of its transactions were imported:`);
+        errors.forEach((error) => console.log(`  ${error}`));
+        console.log('Fix these lines and try again.');
+    }
+}
 
 console.log('Commands: "List All", "List [Account Name]", "exit"');
 

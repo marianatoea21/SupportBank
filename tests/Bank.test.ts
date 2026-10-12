@@ -24,4 +24,18 @@ describe('Bank', () => {
             'No account found with the name "Nobody"!',
         ]);
     });
+
+    it('reports every invalid line and imports nothing', () => {
+        const bank = new Bank();
+        const errors = bank.loadFromCSV('resources/BadTransactions.csv');
+
+        expect(errors).toHaveLength(3);
+        expect(errors[0]).toContain('Line 3');
+        expect(bank.listAll()).toEqual([]);
+    });
+
+    it('reports a missing file', () => {
+        const bank = new Bank();
+        expect(bank.loadFromCSV('resources/Nothing.csv')).toHaveLength(1);
+    });
 });

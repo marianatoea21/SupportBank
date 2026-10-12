@@ -1,0 +1,5 @@
+Date,From,To,Narrative,Amount
+01/01/2014,Jon A,Sarah T,Lunch,10
+not-a-date,Jon A,Sarah T,Lunch,10
+03/01/2014,Jon A,Sarah T,Lunch,abc
+04/01/2014,Jon A,Sarah T
