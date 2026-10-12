@@ -1,3 +1,5 @@
+import { format } from 'date-fns';
+
 export class Transaction {
     date: Date;
     from: string;
@@ -17,5 +19,10 @@ export class Transaction {
         this.to = to;
         this.narrative = narrative;
         this.amount = amount;
+    }
+
+    toString(): string {
+        const date = format(this.date, 'dd/MM/yyyy');
+        return `${date} - ${this.from} paid ${this.to} ${this.amount.toFixed(2)} for ${this.narrative}`;
     }
 }

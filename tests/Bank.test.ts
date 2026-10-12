@@ -14,8 +14,8 @@ describe('Bank', () => {
 
     it('lists the transactions of one account', () => {
         expect(bank.listAccount('Jon A')).toEqual([
-            '01/01/2014 - Pokemon Training',
-            '04/01/2014 - Lunch',
+            '01/01/2014 - Jon A paid Sarah T 10.00 for Pokemon Training',
+            '04/01/2014 - Sarah T paid Jon A 4.00 for Lunch',
         ]);
     });
 

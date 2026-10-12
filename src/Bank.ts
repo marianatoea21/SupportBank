@@ -1,7 +1,8 @@
 import * as fs from 'fs';
-import { parse, format } from 'date-fns';
+import { parse } from 'date-fns';
 import { Account } from './Account';
 import { Transaction } from './Transaction';
+import { BalanceStatus } from './BalanceStatus';
 
 export class Bank {
     private accounts: Map<string, Account> = new Map();
@@ -44,7 +45,7 @@ export class Bank {
         
         for (const account of this.accounts.values()) {
             const balance = account.getBalance();
-            const status = balance >= 0 ? 'is owed' : 'owes';
+            const status = balance >= 0 ? BalanceStatus.IsOwed : BalanceStatus.Owes;
             lines.push(`${account.name} ${status} ${Math.abs(balance).toFixed(2)}`);
         }
         return lines;
@@ -60,8 +61,7 @@ export class Bank {
         const lines: string[] = [];
         
         for (const transaction of account.transactions) {
-            const date = format(transaction.date, 'dd/MM/yyyy');
-            lines.push(`${date} - ${transaction.narrative}`);
+            lines.push(transaction.toString());
         }
         return lines;
     }
