@@ -14,9 +14,13 @@ while (true) {
 	}
 
 	if (input.toLowerCase() === 'list all') {
-		bank.listAll();
+		for (const line of bank.listAll()) {
+        	console.log(line);
+    	}
 	} else if (input.toLowerCase().startsWith('list ')) {
-		bank.listAccount(input.substring(5).trim());
+		for (const line of bank.listAccount(input.substring(5).trim())) {
+            console.log(line);
+        }
 	} else {
 		console.log('Unknown command.');
 	}

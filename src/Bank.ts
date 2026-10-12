@@ -39,25 +39,30 @@ export class Bank {
         return account;
     }
 
-    listAll(): void {
+    listAll(): string[] {
+        const lines: string[] = [];
+        
         for (const account of this.accounts.values()) {
             const balance = account.getBalance();
             const status = balance >= 0 ? 'is owed' : 'owes';
-            console.log(`${account.name} ${status} ${Math.abs(balance).toFixed(2)}.`);
+            lines.push(`${account.name} ${status} ${Math.abs(balance).toFixed(2)}`);
         }
+        return lines;
     }
 
-    listAccount(name: string): void {
+    listAccount(name: string): string[] {
         const account = this.accounts.get(name);
 
         if (!account) {
-            console.log(`No account found with the name "${name}"!`);
-            return;
+            return [`No account found with the name "${name}"!`];
         }
 
+        const lines: string[] = [];
+        
         for (const transaction of account.transactions) {
             const date = format(transaction.date, 'dd/MM/yyyy');
-            console.log(`${date} - ${transaction.narrative}`);
+            lines.push(`${date} - ${transaction.narrative}`);
         }
+        return lines;
     }
 }
