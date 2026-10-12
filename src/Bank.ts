@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import log4js from 'log4js';
-import { parse, format , isValid } from 'date-fns';
+import { parse, isValid } from 'date-fns';
 import { Account } from './Account';
 import { Transaction } from './Transaction';
 import { BalanceStatus } from './BalanceStatus';
@@ -13,52 +13,51 @@ export class Bank {
     loadFromCSV(filePath: string): string[] {
         logger.info(`Loading transactions from ${filePath}`);
 
-        let content: string;
+        let fileContent: string;
         try {
-            content = fs.readFileSync(filePath, 'utf-8');
+            fileContent = fs.readFileSync(filePath, 'utf-8');
         } catch (error) {
             logger.error(`Could not read file ${filePath}: ${error}`);
             return [`Could not read the file "${filePath}".`];
         }
 
+        const lines = fileContent.split(/\r?\n/).slice(1);
         const transactions: Transaction[] = [];
         const errors: string[] = [];
 
-        const addError = (lineNumber: number, reason: string, line: string) => {
-            logger.error(`${filePath}, line ${lineNumber}: ${reason}. Line content: "${line}"`);
-            errors.push(`Line ${lineNumber}: ${reason}`);
-        };
+        let lineNumber = 1;
 
-        content.split(/\r?\n/).forEach((line, index) => {
-            if (index === 0 || line.trim() === '') {
-                return; 
+        for (const line of lines) {
+            lineNumber++;
+
+            if (line.trim() === '') {
+                continue;
             }
 
-            const lineNumber = index + 1; 
             logger.debug(`Reading line ${lineNumber}: ${line}`);
 
-            const parts = line.split(',');
-            if (parts.length !== 5) {
-                addError(lineNumber, `expected 5 values but found ${parts.length}`, line);
-                return;
+            const lineElements = line.split(',');
+            if (lineElements.length !== 5) {
+                this.addError(errors, filePath, lineNumber, `expected 5 values but found ${lineElements.length}`, line);
+                continue;
             }
 
-            const [dateText, from, to, narrative, amountText] = parts;
+            const [dateText, from, to, narrative, amountText] = lineElements;
 
             const date = parse(dateText, 'dd/MM/yyyy', new Date());
             if (!isValid(date)) {
-                addError(lineNumber, `"${dateText}" is not a valid date (expected dd/MM/yyyy)`, line);
-                return;
+                this.addError(errors, filePath, lineNumber, `"${dateText}" is not a valid date (expected dd/MM/yyyy)`, line);
+                continue;
             }
 
             const amount = Number(amountText);
             if (amountText.trim() === '' || Number.isNaN(amount)) {
-                addError(lineNumber, `"${amountText}" is not a valid amount`, line);
-                return;
+                this.addError(errors, filePath, lineNumber, `"${amountText}" is not a valid amount`, line);
+                continue;
             }
 
             transactions.push(new Transaction(date, from, to, narrative, amount));
-        });
+        }
 
         if (errors.length > 0) {
             logger.warn(`Import of ${filePath} aborted: ${errors.length} invalid line(s)`);
@@ -69,9 +68,15 @@ export class Bank {
             this.getOrCreateAccount(transaction.from).transactions.push(transaction);
             this.getOrCreateAccount(transaction.to).transactions.push(transaction);
         }
-        
+
         logger.info(`Loaded ${transactions.length} transactions from ${filePath}`);
         return [];
+        
+    }
+
+    private addError(errors: string[], filePath: string, lineNumber: number, reason: string, line: string): void {
+        logger.error(`${filePath}, line ${lineNumber}: ${reason}. Line content: "${line}"`);
+        errors.push(`Line ${lineNumber}: ${reason}`);
     }
 
     private getOrCreateAccount(name: string): Account {
