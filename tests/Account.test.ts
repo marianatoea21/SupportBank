@@ -36,4 +36,13 @@ describe('Account', () => {
 
         expect(account.getBalance()).toBeCloseTo(6);
     });
+
+    it('ignores transactions that do not involve the account', () => {
+        const account = new Account('Jon A');
+        account.transactions.push(
+            new Transaction(new Date(2014, 0, 1), 'Sarah T', 'Tim L', 'Lunch', 10)
+        );
+
+        expect(account.getBalance()).toBe(0);
+    });
 });
