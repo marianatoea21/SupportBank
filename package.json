@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "date-fns": "^4.4.0",
+    "log4js": "^6.9.1",
     "readline-sync": "^1.4.10"
   }
 }
