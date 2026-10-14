@@ -1,7 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import log4js from 'log4js';
-import { parse, parseISO, isValid } from 'date-fns';
+import { parse, parseISO, isValid, addDays } from 'date-fns';
+import { XMLParser, XMLValidator } from 'fast-xml-parser';
 import { Account } from './Account';
 import { Transaction } from './Transaction';
 import { BalanceStatus } from './BalanceStatus';
@@ -137,6 +138,83 @@ export class Bank {
         return [];
     }
 
+    loadFromXML(filePath: string): string[] {
+        logger.info(`Loading transactions from ${filePath}`);
+
+        const fileContent = this.readFile(filePath);
+        if (fileContent === undefined) {
+            return [`Could not read the file "${filePath}".`];
+        }
+
+        const validation = XMLValidator.validate(fileContent);
+        if (validation !== true) {
+            logger.error(`${filePath} is not valid XML: ${validation.err.msg}`);
+            return [`The file "${filePath}" is not valid XML (line ${validation.err.line}): ${validation.err.msg}`];
+        }
+
+        const xmlParser = new XMLParser({
+            ignoreAttributes: false,
+            attributeNamePrefix: '@_',
+            parseTagValue: false,
+            parseAttributeValue: false,
+        });
+
+        const data = xmlParser.parse(fileContent);
+        const found = data.TransactionList?.SupportTransaction;
+        if (found === undefined) {
+            logger.error(`${filePath} contains no SupportTransaction elements`);
+            return [`The file "${filePath}" contains no transactions.`];
+        }
+
+        const items = Array.isArray(found) ? found : [found];
+
+        const transactions: Transaction[] = [];
+        const errors: string[] = [];
+
+        let transactionNumber = 0;
+
+        for (const item of items) {
+            transactionNumber++;
+
+            const date = addDays(new Date(1899, 11, 30), Number(item['@_Date']));
+            if (!isValid(date)) {
+                errors.push(`Transaction ${transactionNumber}: "${item['@_Date']}" is not a valid date`);
+                continue;
+            }
+
+            const from = String(item.Parties?.From ?? '');
+            const to = String(item.Parties?.To ?? '');
+            if (from.trim() === '' || to.trim() === '') {
+                errors.push(`Transaction ${transactionNumber}: the From or To name is missing`);
+                continue;
+            }
+
+            const amountText = String(item.Value ?? '');
+            const amount = Number(amountText);
+            if (amountText.trim() === '' || Number.isNaN(amount)) {
+                errors.push(`Transaction ${transactionNumber}: "${amountText}" is not a valid amount`);
+                continue;
+            }
+
+            const narrative = String(item.Description ?? '');
+
+            transactions.push(new Transaction(date, from, to, narrative, amount));
+        }
+
+        if (errors.length > 0) {
+            for (const error of errors) {
+                logger.error(`${filePath}: ${error}`);
+            }
+            logger.warn(`Import of ${filePath} aborted: ${errors.length} invalid transaction(s)`);
+            return errors;
+        }
+
+        this.addTransactions(transactions);
+
+        logger.info(`Loaded ${transactions.length} transactions from ${filePath}`);
+        return [];
+    }
+
     private addError(errors: string[], filePath: string, lineNumber: number, reason: string, line: string): void {
         logger.error(`${filePath}, line ${lineNumber}: ${reason}. Line content: "${line}"`);
         errors.push(`Line ${lineNumber}: ${reason}`);
@@ -144,8 +222,13 @@ export class Bank {
 
     private addTransactions(transactions: Transaction[]): void {
         for (const transaction of transactions) {
-            this.getOrCreateAccount(transaction.from).transactions.push(transaction);
-            this.getOrCreateAccount(transaction.to).transactions.push(transaction);
+            const fromAccount = this.getOrCreateAccount(transaction.from);
+            const toAccount = this.getOrCreateAccount(transaction.to);
+
+            fromAccount.transactions.push(transaction);
+            if (toAccount !== fromAccount) {
+                toAccount.transactions.push(transaction);
+            }
         }
     }
 
@@ -160,7 +243,7 @@ export class Bank {
 
     private readFile(filePath: string): string | undefined {
         try {
-            return fs.readFileSync(filePath, 'utf-8');
+            return fs.readFileSync(filePath, 'utf-8').replace(/^\uFEFF/, '');
         } catch (error) {
             logger.error(`Could not read file ${filePath}: ${error}`);
             return undefined;
@@ -176,9 +259,12 @@ export class Bank {
         if (extension === '.json') {
             return this.loadFromJSON(filePath);
         }
+        if (extension === '.xml') {
+            return this.loadFromXML(filePath);
+        }
 
         logger.error(`Unsupported file extension "${extension}" for file ${filePath}`);
-        return [`Unsupported file extension "${extension}". Only .csv and .json are supported.`];
+        return [`Unsupported file extension "${extension}". Only .csv, .json and .xml are supported.`];
     }
 
     listAll(): string[] {

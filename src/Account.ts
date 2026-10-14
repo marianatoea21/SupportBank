@@ -14,7 +14,8 @@ export class Account {
         for (const transaction of this.transactions) {
             if (transaction.from === this.name) {
                 balance -= transaction.amount;
-            } else if (transaction.to === this.name) {
+            } 
+            if (transaction.to === this.name) {
                 balance += transaction.amount;
             }
         }

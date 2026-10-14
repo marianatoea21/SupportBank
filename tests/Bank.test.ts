@@ -92,4 +92,79 @@ describe('Bank', () => {
         expect(errors).toHaveLength(1);
         expect(errors[0]).toContain('Unsupported file extension');
     });
+
+    it('imports an XML file', () => {
+        const xmlBank = new Bank();
+
+        expect(xmlBank.importFile('resources/TestTransactions.xml')).toEqual([]);
+        expect(xmlBank.listAll()).toEqual([
+            'Jon A owes 6.00',
+            'Sarah T is owed 6.00',
+        ]);
+        expect(xmlBank.listAccount('Jon A')).toEqual([
+            '01/01/2014 - Jon A paid Sarah T 10.00 for Pokemon Training',
+            '04/01/2014 - Sarah T paid Jon A 4.00 for Lunch',
+        ]);
+    });
+
+    it('reports every invalid XML transaction and imports nothing', () => {
+        const xmlBank = new Bank();
+        const errors = xmlBank.importFile('resources/BadTransactions.xml');
+
+        expect(errors).toHaveLength(3);
+        expect(errors[0]).toContain('Transaction 1');
+        expect(xmlBank.listAll()).toEqual([]);
+    });
+
+    it('reports a file that is not valid XML', () => {
+        const errors = new Bank().importFile('resources/NotXml.xml');
+
+        expect(errors).toHaveLength(1);
+        expect(errors[0]).toContain('not valid XML');
+    });
+
+    it('reports an XML file with no transactions', () => {
+        const errors = new Bank().importFile('resources/EmptyList.xml');
+
+        expect(errors).toHaveLength(1);
+        expect(errors[0]).toContain('contains no transactions');
+    });
+
+    it('reports a missing XML file', () => {
+        const errors = new Bank().importFile('resources/Nope.xml');
+
+        expect(errors).toEqual(['Could not read the file "resources/Nope.xml".']);
+    });
+
+    it('imports an XML file with a single transaction', () => {
+        const xmlBank = new Bank();
+
+        expect(xmlBank.importFile('resources/SingleTransaction.xml')).toEqual([]);
+        expect(xmlBank.listAll()).toHaveLength(2);
+    });
+
+    it('reports XML transactions with missing parts', () => {
+        const errors = new Bank().importFile('resources/IncompleteTransactions.xml');
+
+        expect(errors).toEqual([
+            'Transaction 1: the From or To name is missing',
+            'Transaction 2: "" is not a valid amount',
+        ]);
+    });
+
+    it('reports an XML file with the wrong root element', () => {
+        const errors = new Bank().importFile('resources/WrongRoot.xml');
+
+        expect(errors).toEqual(['The file "resources/WrongRoot.xml" contains no transactions.']);
+    });
+
+    it('lists a payment to yourself only once and with no balance change', () => {
+        const selfBank = new Bank();
+
+        expect(selfBank.importFile('resources/SelfPayment.csv')).toEqual([]);
+        expect(selfBank.listAccount('Chris W')).toEqual([
+            '01/01/2014 - Chris W paid Chris W 2.48 for Lunch',
+        ]);
+        expect(selfBank.listAll()).toEqual(['Chris W is owed 0.00']);
+    });
 });

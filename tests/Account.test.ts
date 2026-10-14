@@ -45,4 +45,13 @@ describe('Account', () => {
 
         expect(account.getBalance()).toBe(0);
     });
+
+    it('has no net effect when paying yourself', () => {
+        const account = new Account('Chris W');
+        account.transactions.push(
+            new Transaction(new Date(2012, 9, 7), 'Chris W', 'Chris W', 'Lunch', 2.48)
+        );
+
+        expect(account.getBalance()).toBeCloseTo(0);
+    });
 });
