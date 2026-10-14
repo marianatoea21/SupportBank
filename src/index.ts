@@ -49,5 +49,5 @@ while (true) {
 		}
     } else {
 		console.log('Unknown command.');
-	} 
+	}
 }
