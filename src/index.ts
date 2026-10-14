@@ -10,7 +10,7 @@ logger.info('SupportBank started');
 const bank = new Bank();
 
 for (const file of DATA_FILES) {
-    const errors = bank.loadFromCSV(file);
+    const errors = bank.importFile(file);
     if (errors.length > 0) {
         console.log(`"${file}" contains errors, so none of its transactions were imported:`);
         errors.forEach((error) => console.log(`  ${error}`));
@@ -18,7 +18,7 @@ for (const file of DATA_FILES) {
     }
 }
 
-console.log('Commands: "List All", "List [Account Name]", "exit"');
+console.log('Commands: "List All", "List [Account Name]", "Import File [File Name]", "exit"');
 
 while (true) {
 	const input = readlineSync.question('> ').trim();
@@ -35,7 +35,19 @@ while (true) {
 		for (const line of bank.listAccount(input.substring(5).trim())) {
             console.log(line);
         }
-	} else {
+	} else if (input.toLowerCase().startsWith('import file ')) {
+		const fileName = input.substring('import file '.length).trim();
+    	const errors = bank.importFile(fileName);
+
+    	if (errors.length > 0) {
+        	console.log(`"${fileName}" could not be imported, so none of its transactions were added:`);
+			for (const error of errors) {
+				console.log(` ${error}`);
+			}
+    	} else {
+        	console.log(`Imported "${fileName}".`); 
+		}
+    } else {
 		console.log('Unknown command.');
-	}
+	} 
 }

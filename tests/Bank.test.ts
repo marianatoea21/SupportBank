@@ -38,4 +38,58 @@ describe('Bank', () => {
         const bank = new Bank();
         expect(bank.loadFromCSV('resources/Nothing.csv')).toHaveLength(1);
     });
+
+    it('imports a CSV file through importFile', () => {
+        const csvBank = new Bank();
+
+        expect(csvBank.importFile('resources/TestTransactions.csv')).toEqual([]);
+        expect(csvBank.listAll()).toHaveLength(2);
+    });
+
+    it('imports a JSON file', () => {
+        const jsonBank = new Bank();
+
+        expect(jsonBank.importFile('resources/TestTransactions.json')).toEqual([]);
+        expect(jsonBank.listAll()).toEqual([
+            'Jon A owes 6.00',
+            'Sarah T is owed 6.00',
+        ]);
+    });
+
+    it('reports every invalid JSON record and imports nothing', () => {
+        const jsonBank = new Bank();
+        const errors = jsonBank.importFile('resources/BadTransactions.json');
+
+        expect(errors).toHaveLength(2);
+        expect(errors[0]).toContain('Record 1');
+        expect(jsonBank.listAll()).toEqual([]);
+    });
+
+    it('reports a file that is not valid JSON', () => {
+        expect(new Bank().importFile('resources/NotJson.json')).toHaveLength(1);
+    });
+
+    it('reports JSON that is not a list', () => {
+        expect(new Bank().importFile('resources/NotAList.json')).toHaveLength(1);
+    });
+
+    it('reports records that are not objects or have missing names', () => {
+        const errors = new Bank().importFile('resources/BadRecords.json');
+
+        expect(errors).toEqual([
+            'Record 1: expected an object',
+            'Record 2: the FromAccount or ToAccount name is missing',
+        ]);
+    });
+
+    it('rejects an unsupported file type', () => {
+        expect(new Bank().importFile('resources/badFile.json')).toHaveLength(1);
+    });
+
+    it('rejects an unsupported file type', () => {
+        const errors = new Bank().importFile('resources/notes.txt');
+
+        expect(errors).toHaveLength(1);
+        expect(errors[0]).toContain('Unsupported file extension');
+    });
 });

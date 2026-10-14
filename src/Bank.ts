@@ -1,6 +1,7 @@
 import * as fs from 'fs';
+import * as path from 'path';
 import log4js from 'log4js';
-import { parse, isValid } from 'date-fns';
+import { parse, parseISO, isValid } from 'date-fns';
 import { Account } from './Account';
 import { Transaction } from './Transaction';
 import { BalanceStatus } from './BalanceStatus';
@@ -13,11 +14,8 @@ export class Bank {
     loadFromCSV(filePath: string): string[] {
         logger.info(`Loading transactions from ${filePath}`);
 
-        let fileContent: string;
-        try {
-            fileContent = fs.readFileSync(filePath, 'utf-8');
-        } catch (error) {
-            logger.error(`Could not read file ${filePath}: ${error}`);
+        const fileContent = this.readFile(filePath);
+        if (fileContent === undefined) {
             return [`Could not read the file "${filePath}".`];
         }
 
@@ -64,19 +62,91 @@ export class Bank {
             return errors;
         }
 
-        for (const transaction of transactions) {
-            this.getOrCreateAccount(transaction.from).transactions.push(transaction);
-            this.getOrCreateAccount(transaction.to).transactions.push(transaction);
-        }
+        this.addTransactions(transactions);
 
         logger.info(`Loaded ${transactions.length} transactions from ${filePath}`);
         return [];
-        
+    }
+
+    loadFromJSON(filePath: string): string[] {
+        logger.info(`Loading transactions from ${filePath}`);
+
+        const fileContent = this.readFile(filePath);
+        if (fileContent === undefined) {
+            return [`Could not read the file "${filePath}".`];
+        }
+
+        let records: any;
+        try {
+            records = JSON.parse(fileContent);
+        } catch (error) {
+            logger.error(`${filePath} is not valid JSON: ${error}`);
+            return [`The file "${filePath}" is not valid JSON.`];
+        }
+
+        if (!Array.isArray(records)) {
+            logger.error(`${filePath} does not contain a list of transactions`);
+            return [`The file "${filePath}" should contain a list of transactions.`];
+        }
+
+        const transactions: Transaction[] = [];
+        const errors: string[] = [];
+
+        let recordNumber = 0;
+
+        for (const record of records) {
+            recordNumber++;
+
+            if (typeof record !== 'object' || record === null) {
+                errors.push(`Record ${recordNumber}: expected an object`);
+                continue;
+            }
+
+            const date = parseISO(String(record.Date));
+            if (!isValid(date)) {
+                errors.push(`Record ${recordNumber}: "${record.Date}" is not a valid date`);
+                continue;
+            }
+
+            if (typeof record.FromAccount !== 'string' || typeof record.ToAccount !== 'string') {
+                errors.push(`Record ${recordNumber}: the FromAccount or ToAccount name is missing`);
+                continue;
+            }
+
+            if (typeof record.Amount !== 'number') {
+                errors.push(`Record ${recordNumber}: "${record.Amount}" is not a valid amount`);
+                continue;
+            }
+
+            transactions.push(
+                new Transaction(date, record.FromAccount, record.ToAccount, String(record.Narrative), record.Amount)
+            );
+        }
+
+        if (errors.length > 0) {
+            for (const error of errors) {
+                logger.error(`${filePath}: ${error}`);
+            }
+            logger.warn(`Import of ${filePath} aborted: ${errors.length} invalid record(s)`);
+            return errors;
+        }
+
+        this.addTransactions(transactions);
+
+        logger.info(`Loaded ${transactions.length} transactions from ${filePath}`);
+        return [];
     }
 
     private addError(errors: string[], filePath: string, lineNumber: number, reason: string, line: string): void {
         logger.error(`${filePath}, line ${lineNumber}: ${reason}. Line content: "${line}"`);
         errors.push(`Line ${lineNumber}: ${reason}`);
+    }
+
+    private addTransactions(transactions: Transaction[]): void {
+        for (const transaction of transactions) {
+            this.getOrCreateAccount(transaction.from).transactions.push(transaction);
+            this.getOrCreateAccount(transaction.to).transactions.push(transaction);
+        }
     }
 
     private getOrCreateAccount(name: string): Account {
@@ -88,9 +158,32 @@ export class Bank {
         return account;
     }
 
+    private readFile(filePath: string): string | undefined {
+        try {
+            return fs.readFileSync(filePath, 'utf-8');
+        } catch (error) {
+            logger.error(`Could not read file ${filePath}: ${error}`);
+            return undefined;
+        }
+    }
+
+    importFile(filePath: string): string[] {
+        const extension = path.extname(filePath).toLowerCase();
+
+        if (extension === '.csv') {
+            return this.loadFromCSV(filePath);
+        }
+        if (extension === '.json') {
+            return this.loadFromJSON(filePath);
+        }
+
+        logger.error(`Unsupported file extension "${extension}" for file ${filePath}`);
+        return [`Unsupported file extension "${extension}". Only .csv and .json are supported.`];
+    }
+
     listAll(): string[] {
         const lines: string[] = [];
-        
+
         for (const account of this.accounts.values()) {
             const balance = account.getBalance();
             const status = balance >= 0 ? BalanceStatus.IsOwed : BalanceStatus.Owes;
@@ -107,7 +200,7 @@ export class Bank {
         }
 
         const lines: string[] = [];
-        
+
         for (const transaction of account.transactions) {
             lines.push(transaction.toString());
         }
