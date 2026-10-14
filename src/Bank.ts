@@ -8,6 +8,7 @@ import { Transaction } from './Transaction';
 import { BalanceStatus } from './BalanceStatus';
 
 const logger = log4js.getLogger('Bank');
+const EXCEL_EPOCH = new Date(1899, 11, 30);
 
 export class Bank {
     private accounts: Map<string, Account> = new Map();
@@ -58,15 +59,7 @@ export class Bank {
             transactions.push(new Transaction(date, from, to, narrative, amount));
         }
 
-        if (errors.length > 0) {
-            logger.warn(`Import of ${filePath} aborted: ${errors.length} invalid line(s)`);
-            return errors;
-        }
-
-        this.addTransactions(transactions);
-
-        logger.info(`Loaded ${transactions.length} transactions from ${filePath}`);
-        return [];
+        return this.finishImport(filePath, transactions, errors);
     }
 
     loadFromJSON(filePath: string): string[] {
@@ -124,18 +117,7 @@ export class Bank {
             );
         }
 
-        if (errors.length > 0) {
-            for (const error of errors) {
-                logger.error(`${filePath}: ${error}`);
-            }
-            logger.warn(`Import of ${filePath} aborted: ${errors.length} invalid record(s)`);
-            return errors;
-        }
-
-        this.addTransactions(transactions);
-
-        logger.info(`Loaded ${transactions.length} transactions from ${filePath}`);
-        return [];
+        return this.finishImport(filePath, transactions, errors);
     }
 
     loadFromXML(filePath: string): string[] {
@@ -176,7 +158,7 @@ export class Bank {
         for (const item of items) {
             transactionNumber++;
 
-            const date = addDays(new Date(1899, 11, 30), Number(item['@_Date']));
+            const date = addDays(EXCEL_EPOCH, Number(item['@_Date']));
             if (!isValid(date)) {
                 errors.push(`Transaction ${transactionNumber}: "${item['@_Date']}" is not a valid date`);
                 continue;
@@ -201,18 +183,7 @@ export class Bank {
             transactions.push(new Transaction(date, from, to, narrative, amount));
         }
 
-        if (errors.length > 0) {
-            for (const error of errors) {
-                logger.error(`${filePath}: ${error}`);
-            }
-            logger.warn(`Import of ${filePath} aborted: ${errors.length} invalid transaction(s)`);
-            return errors;
-        }
-
-        this.addTransactions(transactions);
-
-        logger.info(`Loaded ${transactions.length} transactions from ${filePath}`);
-        return [];
+        return this.finishImport(filePath, transactions, errors);
     }
 
     private addError(errors: string[], filePath: string, lineNumber: number, reason: string, line: string): void {
@@ -248,6 +219,17 @@ export class Bank {
             logger.error(`Could not read file ${filePath}: ${error}`);
             return undefined;
         }
+    }
+
+    private finishImport(filePath: string, transactions: Transaction[], errors: string[]): string[] {
+        if (errors.length > 0) {
+            logger.warn(`Import of ${filePath} aborted: ${errors.length} invalid entr${errors.length === 1 ? 'y' : 'ies'}`);
+            return errors;
+        }
+
+        this.addTransactions(transactions);
+        logger.info(`Loaded ${transactions.length} transactions from ${filePath}`);
+        return [];
     }
 
     importFile(filePath: string): string[] {
