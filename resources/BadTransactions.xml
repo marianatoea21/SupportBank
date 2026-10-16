@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TransactionList>
+  <SupportTransaction>
+    <Description>No date</Description>
+    <Value>10</Value>
+    <Parties><From>Jon A</From><To>Sarah T</To></Parties>
+  </SupportTransaction>
+  <SupportTransaction Date="41640">
+    <Description>Bad amount</Description>
+    <Value>abc</Value>
+    <Parties><From>Jon A</From><To>Sarah T</To></Parties>
+  </SupportTransaction>
+  <SupportTransaction Date="41640">
+    <Description>No receiver</Description>
+    <Value>10</Value>
+    <Parties><From>Jon A</From></Parties>
+  </SupportTransaction>
+</TransactionList>

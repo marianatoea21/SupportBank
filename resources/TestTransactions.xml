@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TransactionList>
+  <SupportTransaction Date="41640">
+    <Description>Pokemon Training</Description>
+    <Value>10</Value>
+    <Parties>
+      <From>Jon A</From>
+      <To>Sarah T</To>
+    </Parties>
+  </SupportTransaction>
+  <SupportTransaction Date="41643">
+    <Description>Lunch</Description>
+    <Value>4</Value>
+    <Parties>
+      <From>Sarah T</From>
+      <To>Jon A</To>
+    </Parties>
+  </SupportTransaction>
+</TransactionList>
