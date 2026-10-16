@@ -14,12 +14,11 @@ export class Bank {
     private accounts: Map<string, Account> = new Map();
 
     loadFromCSV(filePath: string): string[] {
-        logger.info(`Loading transactions from ${filePath}`);
-
-        const fileContent = this.readFile(filePath);
-        if (fileContent === undefined) {
-            return [`Could not read the file "${filePath}".`];
+        const fileResult = this.readFile(filePath);
+        if ('errors' in fileResult) {
+            return fileResult.errors;
         }
+        const fileContent = fileResult.content;
 
         const lines = fileContent.split(/\r?\n/).slice(1);
         const transactions: Transaction[] = [];
@@ -38,7 +37,7 @@ export class Bank {
 
             const lineElements = line.split(',');
             if (lineElements.length !== 5) {
-                this.addError(errors, filePath, lineNumber, `expected 5 values but found ${lineElements.length}`, line);
+                this.addError(errors, filePath, `Line ${lineNumber}`, `expected 5 values but found ${lineElements.length}`);
                 continue;
             }
 
@@ -46,13 +45,13 @@ export class Bank {
 
             const date = parse(dateText, 'dd/MM/yyyy', new Date());
             if (!isValid(date)) {
-                this.addError(errors, filePath, lineNumber, `"${dateText}" is not a valid date (expected dd/MM/yyyy)`, line);
+                this.addError(errors, filePath, `Line ${lineNumber}`, `"${dateText}" is not a valid date (expected dd/MM/yyyy)`);
                 continue;
             }
 
             const amount = Number(amountText);
             if (amountText.trim() === '' || Number.isNaN(amount)) {
-                this.addError(errors, filePath, lineNumber, `"${amountText}" is not a valid amount`, line);
+                this.addError(errors, filePath, `Line ${lineNumber}`, `"${amountText}" is not a valid amount`);
                 continue;
             }
 
@@ -63,12 +62,11 @@ export class Bank {
     }
 
     loadFromJSON(filePath: string): string[] {
-        logger.info(`Loading transactions from ${filePath}`);
-
-        const fileContent = this.readFile(filePath);
-        if (fileContent === undefined) {
-            return [`Could not read the file "${filePath}".`];
+        const fileResult = this.readFile(filePath);
+        if ('errors' in fileResult) {
+            return fileResult.errors;
         }
+        const fileContent = fileResult.content;
 
         let records: any;
         try {
@@ -92,41 +90,38 @@ export class Bank {
             recordNumber++;
 
             if (typeof record !== 'object' || record === null) {
-                errors.push(`Record ${recordNumber}: expected an object`);
+                this.addError(errors, filePath, `Record ${recordNumber}`, 'expected an object');
                 continue;
             }
 
             const date = parseISO(String(record.Date));
             if (!isValid(date)) {
-                errors.push(`Record ${recordNumber}: "${record.Date}" is not a valid date`);
+                this.addError(errors, filePath, `Record ${recordNumber}`, `"${record.Date}" is not a valid date`);
                 continue;
             }
 
             if (typeof record.FromAccount !== 'string' || typeof record.ToAccount !== 'string') {
-                errors.push(`Record ${recordNumber}: the FromAccount or ToAccount name is missing`);
+                this.addError(errors, filePath, `Record ${recordNumber}`, 'the FromAccount or ToAccount name is missing');
                 continue;
             }
 
             if (typeof record.Amount !== 'number') {
-                errors.push(`Record ${recordNumber}: "${record.Amount}" is not a valid amount`);
+                this.addError(errors, filePath, `Record ${recordNumber}`, `"${record.Amount}" is not a valid amount`);
                 continue;
             }
 
-            transactions.push(
-                new Transaction(date, record.FromAccount, record.ToAccount, String(record.Narrative), record.Amount)
-            );
+            transactions.push(new Transaction(date, record.FromAccount, record.ToAccount, String(record.Narrative), record.Amount));
         }
 
         return this.finishImport(filePath, transactions, errors);
     }
 
     loadFromXML(filePath: string): string[] {
-        logger.info(`Loading transactions from ${filePath}`);
-
-        const fileContent = this.readFile(filePath);
-        if (fileContent === undefined) {
-            return [`Could not read the file "${filePath}".`];
+        const fileResult = this.readFile(filePath);
+        if ('errors' in fileResult) {
+            return fileResult.errors;
         }
+        const fileContent = fileResult.content;
 
         const validation = XMLValidator.validate(fileContent);
         if (validation !== true) {
@@ -160,21 +155,21 @@ export class Bank {
 
             const date = addDays(EXCEL_EPOCH, Number(item['@_Date']));
             if (!isValid(date)) {
-                errors.push(`Transaction ${transactionNumber}: "${item['@_Date']}" is not a valid date`);
+                this.addError(errors, filePath, `Transaction ${transactionNumber}`, `"${item['@_Date']}" is not a valid date`);
                 continue;
             }
 
             const from = String(item.Parties?.From ?? '');
             const to = String(item.Parties?.To ?? '');
             if (from.trim() === '' || to.trim() === '') {
-                errors.push(`Transaction ${transactionNumber}: the From or To name is missing`);
+                this.addError(errors, filePath, `Transaction ${transactionNumber}`, 'the From or To name is missing');
                 continue;
             }
 
             const amountText = String(item.Value ?? '');
             const amount = Number(amountText);
             if (amountText.trim() === '' || Number.isNaN(amount)) {
-                errors.push(`Transaction ${transactionNumber}: "${amountText}" is not a valid amount`);
+                this.addError(errors, filePath, `Transaction ${transactionNumber}`, `"${amountText}" is not a valid amount`);
                 continue;
             }
 
@@ -186,9 +181,9 @@ export class Bank {
         return this.finishImport(filePath, transactions, errors);
     }
 
-    private addError(errors: string[], filePath: string, lineNumber: number, reason: string, line: string): void {
-        logger.error(`${filePath}, line ${lineNumber}: ${reason}. Line content: "${line}"`);
-        errors.push(`Line ${lineNumber}: ${reason}`);
+    private addError(errors: string[], filePath: string, label: string, reason: string): void {
+        logger.error(`${filePath}, ${label}: ${reason}.`);
+        errors.push(`${label}: ${reason}`);
     }
 
     private addTransactions(transactions: Transaction[]): void {
@@ -212,12 +207,13 @@ export class Bank {
         return account;
     }
 
-    private readFile(filePath: string): string | undefined {
+    private readFile(filePath: string): { content: string } | { errors: string[] } {
         try {
-            return fs.readFileSync(filePath, 'utf-8').replace(/^\uFEFF/, '');
+            logger.info(`Loading transactions from ${filePath}`);
+            return { content: fs.readFileSync(filePath, 'utf-8').replace(/^\uFEFF/, '') };
         } catch (error) {
             logger.error(`Could not read file ${filePath}: ${error}`);
-            return undefined;
+            return { errors: [`Could not read the file "${filePath}".`] };
         }
     }
 
